@@ -38,6 +38,24 @@ let wall = App.loadSpritesheet("wall.png");
 
 let _userMainWidget = [];
 
+App.onPostMessage.Add(function (p, e) {
+	App.sayToAll(p.name);
+	App.sayToAll(e);
+});
+
+App.onEmbedMessage.Add(function (p, e) {
+	App.sayToAll("2" + p.name);
+	for (let i in e) {
+		App.sayToAll(i + ": " + e[i]);
+	}
+	App.sayToAll("2" + e);
+	if (e.name) {
+		p.name = e.name;
+	}
+
+	p.sendUpdated();
+});
+
 App.onStart.Add(function () {
 	Map.clearAllObjects();
 	startState(STATE_INIT);
@@ -1272,4 +1290,13 @@ function sendMessageToPlayerWidget(data = null) {
 			}
 		}
 	}
+}
+
+App.addOnKeyDown(86, _speed); // v키를 누르면속도가 200
+function _speed(p) {
+	p.moveSpeed = 200;
+	let a = (p.tag.skill_x = false);
+	let b = (p.tag.skill_x_timer = 20);
+	p.tag.skill_x = true; // true로 공격가능하게하고
+	p.sendUpdated(); // 업데이트 적용
 }

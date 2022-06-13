@@ -60,7 +60,9 @@
 	</body>
 	<script type="text/javascript">
 		const situationDom = document.getElementById("situation");
-
+		window.onload = function () {
+			window.top.postMessage({ name: "hi" }, "*");
+		};
 		window.addEventListener("message", function (e) {
 			let total = e.data.total;
 			let current = e.data.current;
@@ -79,3 +81,30 @@
 		});
 	</script>
 </html>
+
+<!-- 0: "players"
+1: "playerCount"
+2: "mapHashID"
+3: "spaceHashID"
+4: "storage"
+5: "cameraEffect"
+6: "cameraEffectParam1"
+7: "enableChangeName"
+8: "enableEmbed"
+9: "onInit"
+10: "onStart"
+11: "onDestroy"
+12: "onSidebarTouched"
+13: "onPostMessage"
+14: "onSay"
+15: "onEmbedMessage"
+16: "onUpdate"
+17: "onObjectTouched"
+18: "onObjectAttacked"
+19: "onBlockTouched"
+20: "onJoinPlayer"
+21: "onLeavePlayer"
+22: "onPlayerTouched"
+23: "onUnitAttacked"
+24: "mobileJoystick"
+25: "mobileJumpButton" -->

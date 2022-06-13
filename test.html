@@ -1,0 +1,43 @@
+<html style="overflow: hidden">
+	<head>
+		<style type="text/css"></style>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+	</head>
+	<body>
+		<iframe
+			onload="test()"
+			src="https://zep.us/play/yW90xn"
+			allow="camera *;microphone *"
+			id="zepiframe"
+		></iframe>
+		<script type="text/javascript">
+			function test() {
+				console.log("hi");
+
+				var target = document.getElementById("zepiframe");
+				if (target) {
+					console.log("ok");
+				} else {
+					console.log("not found");
+				}
+
+				target.contentWiondow.postMessage(
+					{
+						type: "signin",
+						walletAddress: null,
+
+						zepMessage: !0,
+					},
+					"*"
+				);
+			}
+			$(document).ready(function () {
+				console.log("document ready..");
+			});
+
+			window.addEventListener("message", function (e) {
+				console.log(e);
+			});
+		</script>
+	</body>
+</html>
