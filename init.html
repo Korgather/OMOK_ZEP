@@ -60,9 +60,9 @@
 	</body>
 	<script type="text/javascript">
 		const situationDom = document.getElementById("situation");
-		window.onload = function () {
+		/*window.onload = function () {
 			window.top.postMessage({ name: "hi" }, "*");
-		};
+		};*/
 		window.addEventListener("message", function (e) {
 			let total = e.data.total;
 			let current = e.data.current;

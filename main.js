@@ -31,6 +31,7 @@ let _appWidget;
 let _timer = 0;
 let _playerCount = 0;
 let _turn = "";
+let _turnCount = 0;
 
 let blackStone = App.loadSpritesheet("blackStone.png");
 let whiteStone = App.loadSpritesheet("whiteStone.png");
@@ -44,16 +45,36 @@ App.onPostMessage.Add(function (p, e) {
 });
 
 App.onEmbedMessage.Add(function (p, e) {
-	App.sayToAll("2" + p.name);
-	for (let i in e) {
-		App.sayToAll(i + ": " + e[i]);
+	p.moveSpeed = 80;
+	if (e.type === "login") {
+		p.name = e.nickname;
+		p.tag.id = e.id;
+		p.tag.guest = false;
+		p.tag.win = e.win;
+		p.tag.lose = e.lose;
+		p.title = e.win + "승 " + e.lose + "패";
+		p.sendUpdated();
+	} else if (e.type === "guest") {
+		App.httpGet(
+			"https://nickname.hwanmoo.kr/?format=json&count=1&max_length=6&whitespace=_",
+			null,
+			(res) => {
+				res = JSON.parse(res);
+				p.name = res.words[0];
+				p.title = "비로그인 유저";
+				p.tag.gusest = true;
+				p.tag.win = 0;
+				p.tag.lose = 0;
+				p.sendUpdated();
+			}
+		);
+		// for (let i in p) {
+		// 	App.sayToAll(`${i}: ${p[i]}`);
+		// }
+	} else if (e.type === "nicknameChange") {
+		p.name = e.nickname;
+		p.sendUpdated();
 	}
-	App.sayToAll("2" + e);
-	if (e.name) {
-		p.name = e.name;
-	}
-
-	p.sendUpdated();
 });
 
 App.onStart.Add(function () {
@@ -64,16 +85,15 @@ App.onStart.Add(function () {
 function giveTitle(p) {
 	if (p.role == 3000) {
 		p.title = "운영자";
-	} else if (p.id.indexOf("GUEST") >= 0) {
+	} else if (p.tag.guest) {
 		p.title = "비로그인 유저";
-	} else {
-		p.title = "오목새싹";
+	} else if (!p.tag.guest) {
+		p.title = p.tag.win + "승 " + p.tag.lose + "패";
 	}
 	p.sendUpdated();
 }
 
 App.onJoinPlayer.Add(function (p) {
-	giveTitle(p);
 	let rand = Math.floor(Math.random() * (BOARD_SIZE * 2));
 	if (standLocation[rand]) {
 		p.spawnAt(standLocation[rand][0], standLocation[rand][1]);
@@ -90,20 +110,26 @@ App.onJoinPlayer.Add(function (p) {
 	p.sprite = null;
 	p.hidden = false;
 	p.tag = {
+		id: null,
+		win: 0,
+		lose: 0,
+		guest: true,
 		joined: false,
 		color: "no color",
 	};
+	// p.moveSpeed = 0;
 	p.sendUpdated();
+	giveTitle(p);
 
 	if (_state == STATE_INIT) {
 		let p_widget = p.showWidget("init.html", "top", 400, 200);
-		p_widget.onMessage.Add(function (player, data) {
-			for (let i in data) {
-				App.sayToAll(`${i}: ${data[i]}`);
-			}
-			player.name = data.name;
-			player.sendUpdated();
-		});
+		// p_widget.onMessage.Add(function (player, data) {
+		// 	for (let i in data) {
+		// 		App.sayToAll(`${i}: ${data[i]}`);
+		// 	}
+		// 	player.name = data.name;
+		// 	player.sendUpdated();
+		// });
 		_userMainWidget.push(p_widget);
 		p_widget.sendMessage({
 			total: 2,
@@ -123,6 +149,7 @@ App.onLeavePlayer.Add(function (p) {
 			(a) => {}
 		);
 	}
+
 	if (p.tag.joined == true) {
 		if (_state == STATE_INIT) {
 			_playerCount--;
@@ -136,9 +163,30 @@ App.onLeavePlayer.Add(function (p) {
 			} else if (p.tag.color == STONE_WHITE) {
 				win_game(STONE_BLACK);
 			}
+			p.tag.lose = p.tag.lose + 1;
+			p.sendUpdated();
 		}
-
 		// 게임 끝 이벤트 추가해야함
+	}
+
+	if (!p.tag.guest) {
+		let pwin = p.tag.win * 1;
+		let plose = p.tag.lose * 1;
+		let pid = p.tag.id * 1;
+
+		App.httpPost(
+			"https://api.metabusstation.shop/api/v1/game/omok/user/info",
+			{},
+			{
+				id: p.tag.id + "",
+				nickname: p.name + "",
+				win: p.tag.win + "",
+				lose: p.tag.lose + "",
+			},
+			(res) => {
+				// App.sayToAll(`${res}`);
+			}
+		);
 	}
 });
 
@@ -369,6 +417,7 @@ App.addOnKeyDown(88, function (player) {
 							}
 							_appWidget = App.showWidget("black_timer.html", "top", 500, 130);
 							Map.putObject(x, y, whiteStone);
+							_turnCount++;
 							App.playSound("STONE.wav");
 						} else if (playerColor == STONE_BLACK) {
 							tickTockSoundOn = false;
@@ -379,6 +428,7 @@ App.addOnKeyDown(88, function (player) {
 							}
 							_appWidget = App.showWidget("white_timer.html", "top", 500, 130);
 							Map.putObject(x, y, blackStone);
+							_turnCount++;
 							App.playSound("STONE.wav");
 						}
 						if (_turn === STONE_BLACK) {
@@ -531,6 +581,7 @@ function win_game(_stone) {
 	// 게임 승리 관련 처리 루틴
 	_start = false;
 	_stateTimer = 0;
+	let isBlackWin;
 	if (_appWidget) {
 		_appWidget.destroy();
 		_appWidget = null;
@@ -538,20 +589,42 @@ function win_game(_stone) {
 	App.playSound("LOSE.WAV");
 	if (_stone == STONE_BLACK) {
 		App.showCenterLabel("흑돌 승리!", 0xffffff, 0x000000, 300);
+		isBlackWin = true;
 	} else if (_stone == STONE_WHITE) {
 		App.showCenterLabel("백돌 승리!", 0xffffff, 0x000000, 300);
+		isBlackWin = false;
 	}
 
 	let players = App.players;
 	for (let i in players) {
 		let p = players[i];
-		p.tag = {
-			joined: false,
-			color: "no color",
-		};
-		p.title = null;
+
+		if (_turnCount > 10) {
+			if (p.tag.color === STONE_BLACK) {
+				if (isBlackWin) {
+					p.tag.win = p.tag.win * 1 + 1;
+				} else {
+					p.tag.lose = p.tag.lose * 1 + 1;
+				}
+			} else if (p.tag.color === STONE_WHITE) {
+				if (isBlackWin) {
+					p.tag.lose = p.tag.lose * 1 + 1;
+				} else {
+					p.tag.win = p.tag.win * 1 + 1;
+				}
+			}
+		}
+
+		p.tag.joined = false;
+		p.tag.color = "no color";
+
 		p.sendUpdated();
 	}
+
+	if (_turnCount <= 10) {
+		App.sayToAll("10수 이내에 끝난 게임은 승수에 반영되지 않습니다.", 0xda2f46);
+	}
+
 	App.runLater(() => {
 		startState(STATE_INIT);
 	}, 10);
