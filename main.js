@@ -44,17 +44,33 @@ App.onPostMessage.Add(function (p, e) {
 	App.sayToAll(e);
 });
 
+function isLogined(id) {
+	let players = App.players;
+	for (let i in players) {
+		let p = players[i];
+		if (p.tag.id === id) return true;
+	}
+
+	return false;
+}
+
 App.onEmbedMessage.Add(function (p, e) {
 	p.moveSpeed = 80;
-	if (e.type === "login") {
-		p.name = e.nickname;
-		p.tag.id = e.id;
-		p.tag.guest = false;
-		p.tag.win = e.win;
-		p.tag.lose = e.lose;
-		p.title = e.win + "승 " + e.lose + "패";
-		p.sendUpdated();
-	} else if (e.type === "guest") {
+	let type = e.type;
+	if (type === "login") {
+		if (!isLogined()) {
+			p.name = e.nickname;
+			p.tag.id = e.id;
+			p.tag.guest = false;
+			p.tag.win = e.win;
+			p.tag.lose = e.lose;
+			p.title = e.win + "승 " + e.lose + "패";
+			p.sendUpdated();
+		} else {
+			type = "guest";
+		}
+	}
+	if (type === "guest") {
 		App.httpGet(
 			"https://nickname.hwanmoo.kr/?format=json&count=1&max_length=6&whitespace=_",
 			null,
@@ -71,10 +87,11 @@ App.onEmbedMessage.Add(function (p, e) {
 		// for (let i in p) {
 		// 	App.sayToAll(`${i}: ${p[i]}`);
 		// }
-	} else if (e.type === "nicknameChange") {
+	} else if (type === "nicknameChange") {
 		p.name = e.nickname;
 		p.sendUpdated();
 	}
+	return;
 });
 
 App.onStart.Add(function () {
